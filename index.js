@@ -54,8 +54,15 @@ const io = new Server(server, {
 });
 
 // Konfigurasi Dasar
-const PORT = Number(process.env.PORT) || 3000;
+// Alamat publik yang dipakai untuk dibuka di browser.
+const PUBLIC_IP = process.env.PUBLIC_IP || '78.154.103.41';
+const PORT = Number(process.env.PORT) || 14836;
+// HOST = alamat yang di-bind oleh proses Node.
+// Di VPS yang punya IP publik sendiri, isi dengan IP publik tersebut.
+// Di container/hosting (Wispbyte, Render, Termux), IP publik bukan milik
+// interface lokal, jadi bind ke 0.0.0.0 lalu akses lewat PUBLIC_IP:PORT.
 const HOST = process.env.HOST || '0.0.0.0';
+const PUBLIC_URL = process.env.PUBLIC_URL || `http://${PUBLIC_IP}:${PORT}`;
 const intervalMs = 2000; // 2 detik per pesan
 const SESSION_DIR = path.join(__dirname, 'sesi_wa');
 const REPLY_FILE = path.join(__dirname, 'pesan_balasan.json');
@@ -1168,8 +1175,47 @@ app.get('/health', (req, res) => {
     res.json({ ok: true, waStatus, isSending, totalSent, totalRejected, totalReplies: replyHistory.length });
 });
 
-// Hanya mendengarkan di localhost: server tidak terekspos ke jaringan/WiFi lain.
-server.listen(PORT, HOST, () => {
-    addLog(`Server aktif di http://${HOST}:${PORT}`, 'success');
-    startBot();
-});
+// Dengarkan di HOST:PORT. Kalau HOST bukan milik interface lokal
+// (EADDRNOTAVAIL) atau sudah dipakai proses lain (EADDRINUSE),
+// otomatis jatuh ke 0.0.0.0 supaya panel tetap bisa dibuka.
+function mulaiServer(host, bolehFallback) {
+    let gagalBind = false;
+
+    const onError = (err) => {
+        gagalBind = true;
+        server.removeListener('error', onError);
+
+        if (bolehFallback && (err.code === 'EADDRNOTAVAIL' || err.code === 'EADDRINUSE')) {
+            addLog(
+                `Bind ke ${host}:${PORT} gagal (${err.code}). Beralih ke 0.0.0.0:${PORT}...`,
+                'error'
+            );
+            setTimeout(() => mulaiServer('0.0.0.0', false), 300);
+            return;
+        }
+
+        addLog(`Gagal membuka server di ${host}:${PORT} -> ${err.message}`, 'error');
+        if (err.code === 'EACCES') {
+            addLog('Port < 1024 butuh izin root. Pakai port lain, misal PORT=14836.', 'error');
+        }
+        process.exit(1);
+    };
+
+    server.once('error', onError);
+
+    server.listen(PORT, host, () => {
+        server.removeListener('error', onError);
+        if (gagalBind) return; // abaikan callback dari percobaan bind yang gagal
+        addLog(`Server aktif di http://${host}:${PORT} (bind ${host}:${PORT})`, 'success');
+        addLog(`Buka panel di browser: ${PUBLIC_URL}`, 'success');
+        if (host === '0.0.0.0') {
+            addLog(
+                `Pastikan port ${PORT} di-forward/terbuka di firewall server, lalu akses ${PUBLIC_URL}`,
+                'info'
+            );
+        }
+        startBot();
+    });
+}
+
+mulaiServer(HOST, HOST !== '0.0.0.0');
