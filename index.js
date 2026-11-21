@@ -55,6 +55,7 @@ const io = new Server(server, {
 
 // Konfigurasi Dasar
 const PORT = Number(process.env.PORT) || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
 const intervalMs = 2000; // 2 detik per pesan
 const SESSION_DIR = path.join(__dirname, 'sesi_wa');
 const REPLY_FILE = path.join(__dirname, 'pesan_balasan.json');
@@ -1168,7 +1169,7 @@ app.get('/health', (req, res) => {
 });
 
 // Hanya mendengarkan di localhost: server tidak terekspos ke jaringan/WiFi lain.
-server.listen(PORT, '127.0.0.1', () => {
-    addLog(`Web GUI aktif! Buka di browser HP Anda: http://localhost:${PORT}`, 'success');
+server.listen(PORT, HOST, () => {
+    addLog(`Server aktif di http://${HOST}:${PORT}`, 'success');
     startBot();
 });

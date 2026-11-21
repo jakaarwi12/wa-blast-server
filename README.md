@@ -3,7 +3,10 @@
 Backend **Baileys + Express + Socket.IO** untuk panel web:
 https://jakaarwi12.github.io/wa-blast-web/
 
-## Deploy ke Render (gratis)
+## Deploy
+
+- **Wispbyte (akun sudah ada):** ikuti **[WISPBYTE.md](WISPBYTE.md)** — repo ini bisa langsung di-Pull lewat GitHub Integration.
+- **Render (alternatif):**
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/jakaarwi12/wa-blast-server)
 
